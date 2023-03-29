@@ -1,0 +1,309 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>TSIA202b - Kalman Filter</title>
+
+		<link rel="stylesheet" href="css/reset.css">
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/telecom.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/github.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+		<style>
+			#target {
+				width: 400px;
+				height: 300px;
+				overflow-y: auto;
+				overflow-x: auto;
+				resize: both;
+				position: relative;
+				z-index: 2;
+			}
+			iframe {
+				width: 100%;
+				height: 100%;
+				border: none;
+			}
+			</style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+				<section class="cover" data-background="figures/background-blur2.jpg"  data-state="no-title-footer no-progressbar has-dark-background">
+
+					<h2 id='coverh2'>Kalman Filter and Dynamic Linear Models</h2>
+					<h1  id='title_seminar'> TSIA202b </h1>
+					<h3><a href="https://matfontaine.github.io/KALMAN", id='github_url'>matfontaine.github.io/KALMAN</a></h3>
+					<p id='coverauthors'>
+						 Mathieu FONTAINE<br />
+						<a href="mailto:mathieu.fontaine@ensta-paris.fr", class="mail">mathieu.fontaine@telecom-paris.fr</a>
+					</p>
+					<p id="date">
+					March, 29th 2023 <br>
+					Inspired by François Roueff Slides
+					</p>
+
+
+
+					<p>
+					<img src="css/theme/img/logo-Telecom.svg" id="telecom" class="logo" alt="">
+					<aside class="notes">
+						<ul><li>We will consider historical audio source separation technique</li>
+									<li>e.g. no deep learning extensions or nonnegative matrix factorization</li>
+								<li>the Handbook for that course is available on the moodle (PAM/Audio_source_separation)</li>
+						</ul>
+					</aside>
+				</section>
+
+				<!-- Outline of the presentation -->
+				<section>
+					<h1> Outlines</h1>
+					<ol>
+						<li>Dynamic linear models (DLM) </br>
+							$\quad \rightarrow$ General Settings </br>
+							$\quad \rightarrow$ Main algorithms
+						</li>
+						<li>
+							Examples
+						</li>
+
+					</ol>
+				</section>
+				<section class="cover" data-background="figures/background-blur.jpg" data-state="no-title-footer no-progressbar has-dark-background">
+					<h2 id='coverh2'>1.1 - Dynamic linear models (General setting)</h2>
+
+				</section>
+				<section>
+					<h1>State & observation variables</h1>
+					<center>
+					<img src="figures/images/state-space-exple.png" width="50%">
+				</center>
+				<ul>
+					<li>We have a trajectory of noisy observations $\circ$ <b>(known)</b></li>
+					<li>And of state variables $\color{red} +$ evolving in the plan <b>(what we want to know)</b></li>
+				</ul>
+				
+				<!-- <p>
+				<div class="remarque">Which "easy" model can be proposed for such problem ?</div>
+			</p>	 -->
+			</section>
+
+			<section>
+				<h1>State & observation variables</h1>
+				<center>
+				<img src="figures/images/state-space-exple.png" width="50%">
+			</center>
+			<ul>
+				<li>We have a trajectory of noisy observations $\circ$ <b>(known)</b></li>
+				<li>And of state variables $\color{red} +$ evolving in the plan <b>(what we want to know)</b></li>
+			</ul>
+			
+			<p>
+			<div class="remarque">Which model can be proposed for such a problem ?</div>
+		</p>	
+		</section>
+
+		<section>
+			<h1>Dynamic linear models (DLM)</h1>
+			<ul>
+				<li>Simple model for describing noisy observations of a multidimensional evolving system</li>
+				<!-- <li>Originally, used in the 60's in Appolo's program</li>
+				<li>Other applications: radar, localization/tracking, econometrics ...</li> -->
+			</ul>
+		</section>
+
+		<section>
+			<h1>Dynamic linear models (DLM)</h1>
+			<ul>
+				<li>Simple model for describing noisy observations of a multidimensional evolving system</li>
+				<li>Originally, used in the 60's in Appolo's program</li>
+				<!-- <li>Other applications: radar, localization/tracking, econometrics ...</li> -->
+			</ul>
+		</section>
+
+		<section>
+			<h1>Dynamic linear models (DLM)</h1>
+			<ul>
+				<li>Simple model for describing noisy observations of a multidimensional evolving system</li>
+				<li>Originally, used in the 60's in Appolo's program</li>
+				<li>Other applications: radar, localization/tracking, econometrics ...</li>
+			</ul>
+			<p>Hereafter the code color for the next equations:
+			<ul>
+				<li>${\color{red}A} \rightarrow$ Deterministic</li>
+				<li>${\color{blue}B} \rightarrow$ Observed variable or deterministic observation</li>
+				<li>${\color{brown}C} \rightarrow$ Not-observed variable</li>
+			</ul>
+		</p>
+		<div class="exemple">
+			<div id="title">Définition [DLM]</div>
+			A DLM is defined by
+			<center>
+			$$
+			\begin{aligned}
+			{\color{brown}\bold{X}}_t &= {\color{red}\bold{\Phi}}_t{\color{brown}\bold{X}}_{t-1} + {\color{red}\bold{A}}_t{\color{blue}\bold{u}}_{t} + {\color{brown}\bold{W}}_{t} & \texttt{(State equation)}  \\
+			{\color{blue}\bold{Y}}_t &= {\color{red}\bold{\Psi}}_t{\color{brown}\bold{X}}_{t} + {\color{red}\bold{B}}_t{\color{blue}\bold{u}}_{t} + {\color{brown}\bold{V}}_{t}  & \texttt{(Observation equation)}
+			\end{aligned}
+			$$
+		</center>
+		<ul>
+			<li>${\color{brown}\bold{X}}_t, {\color{blue}\bold{Y}}_t,{\color{blue}\bold{u}}_{t}  $: observed, state and exogenous (deterministic) variables </li>
+			<li>${\color{red}\bold{\Phi}}_t, {\color{red}\bold{\Psi}}_t, {\color{red}\bold{A}}_t, {\color{red}\bold{B}}_t$: parameters of the model</li>
+			<li>${\color{brown}\bold{W}}_t, {\color{brown}\bold{V}}_t$: white noise variables</li>
+		</ul>
+		</div>
+
+		</section>
+		<section>
+			<h1>Distributions assumptions</h1>
+			<ul>
+				<li>${\color{brown}\bold{W}}_t \overset{\text{i.i.d.}}{\sim} \mathcal{N}(0, {\color{red}\bold{Q}}), {\color{brown}\bold{V}}_t \overset{\text{i.i.d.}}{\sim} \mathcal{N}(0, {\color{red}\bold{R}})$</li>
+				<li>${\color{brown}\bold{X}}_0 \sim \mathcal{N}({\color{red}\bold{\mu}}, {\color{red}\bold{\Sigma}}_0)$ and ${\color{brown}\bold{X}}_0 \perp \! \! \! \perp {\color{brown}\bold{V}}_t \perp \! \! \! \perp {\color{brown}\bold{W}}_t$</li>
+			</ul>
+		</section>
+
+		<section>
+			<h1>Distributions assumptions</h1>
+			<ul>
+				<li>${\color{brown}\bold{W}}_t \overset{\text{i.i.d.}}{\sim} \mathcal{N}(0, {\color{red}\bold{Q}}), {\color{brown}\bold{V}}_t \overset{\text{i.i.d.}}{\sim} \mathcal{N}(0, {\color{red}\bold{R}})$</li>
+				<li>${\color{brown}\bold{X}}_0 \sim \mathcal{N}({\color{red}\bold{\mu}}, {\color{red}\bold{\Sigma}}_0)$ and ${\color{brown}\bold{X}}_0 \perp \! \! \! \perp {\color{brown}\bold{V}}_t \perp \! \! \! \perp {\color{brown}\bold{W}}_t$</li>
+			</ul>
+			<p>
+				Through those Gaussian assumptions, the best predictor $ {\color{blue}\bold{X}}_{t \mid s} = \mathbb{E}[{\color{brown}\bold{X}}_t \mid {\color{blue}\bold{Y}}_{1:s}]$ can be computed.
+			</p>
+			It can indeed be shown that:
+			<center>
+			$$
+			{\color{blue}\bold{X}}_{t \mid s} = \text{proj}({\color{brown}\bold{X}}_t \mid \text{Span}(1, {\color{blue}\bold{Y}}_{1:s}))
+			$$
+		</center>
+		<div class="affirmation">On the other hand, $\text{proj}({\color{brown}\bold{X}}_t \mid \text{Span}(1, {\color{blue}\bold{Y}}_{1:s}))$ does not require the Gaussian assumption.</div>
+		</section>
+
+		<section class="cover" data-background="figures/background-blur.jpg" data-state="no-title-footer no-progressbar has-dark-background">
+			<h2 id='coverh2'>1.2. - Dynamic linear models (Main algorithms)</h2>
+		</section>
+		<section>
+			<h1>Kalman Filtering</h1>
+			In those previous context we call the following different goals
+		<ul>
+			<li><b>Filtering</b>: the computation of ${\color{blue}\bold{X}}_{t \mid t}$ </li>
+			<li><b>Forecasting</b>: the computation of ${\color{blue}\bold{X}}_{t \mid s}$ for $s < t$ </li>
+			<li><b>Smoothing</b>: the computation of ${\color{blue}\bold{X}}_{t \mid s}$ for $s > t$ </li>
+		</ul>
+		<p>
+			Let's denote ${\color{blue}\bold{X}}_{t \mid s} = \mathbb{E}[{\color{brown}\bold{X}}_t \mid {\color{blue}\bold{Y}}_{1:s}]$  and ${\color{red}\bold{\Sigma}}_{t \mid s} = \text{Cov}({\color{brown}\bold{X}}_t - {\color{blue}\bold{X}}_{t \mid s})$
+		<div class="exemple">
+			<div id="title">Theorem [Kalman Filter/Forecasting Algorithm]</div>
+			With the previous assumptions we can estimate ${\color{blue}\bold{X}}_{t \mid s}, s \leq t$ iteratively as follow:
+			<ol>
+				<li>${\color{blue}\bold{X}}_{t \mid s} = {\color{red}\bold{\Phi}}_t{\color{blue}\bold{X}}_{t-1 \mid s} + {\color{red}\bold{A}}_t {\color{blue}\bold{u}}_t$</li>
+				<li>${\color{red}\bold{\Sigma}}_{t \mid s} =  {\color{red}\bold{\Phi}}_t{\color{red}\bold{\Sigma}}_{t-1 \mid s}{\color{red}\bold{\Phi}}_t^\top + {\color{red}\bold{Q}}$</li>
+				<hr>
+				<li>${\color{red}\bold{K}}_t = {\color{red}\bold{\Sigma}}_{t \mid t-1}{\color{red}\bold{\Psi}}_t^\top\left({\color{red}\bold{\Psi}}_t{\color{red}\bold{\Sigma}}_{t \mid t-1}{\color{red}\bold{\Psi}}_t^\top + {\color{red}\bold{R}}\right)^{-1} \quad \texttt{(Kalman gain matrix)}$</li>
+				<li>${\color{blue}\bold{X}}_{t \mid t} = {\color{blue}\bold{X}}_{t \mid t-1} + {\color{red}\bold{K}}_t({\color{blue}\bold{Y}}_t - {\color{red}\bold{B}}_t {\color{blue}\bold{u}}_t - {\color{red}\bold{\Psi}}_t{\color{blue}\bold{X}}_{t \mid t-1})$</li>
+				<li>${\color{red}\bold{\Sigma}}_{t \mid t} = [I - {\color{red}\bold{K}}_t{\color{red}\bold{\Psi}}_t]{\color{red}\bold{\Sigma}}_{t \mid t-1}$</li>
+			</ol>
+		</div>
+	</p>
+	<p>
+		<b>Remark: </b> The step 3. to 5. are only for the Kalman Filter.</br>
+		<b>Proof:</b> Sketch on the whiteboard.
+	</p>
+		</section>
+		<section>
+			<h1>Rauch-Tung-Striebel(RTS) smoother algorithm</h1>
+			<div class="exemple">
+				<div id="title">Theorem [RTS smoother Algorithm]</div>
+				With the previous assumptions we can estimate ${\color{blue}\bold{X}}_{t \mid s}, s > t$ iteratively as follow:
+				<ol>
+					<li>${\color{red}\bold{J}}_{t} = {\color{red}\bold{\Sigma}}_{t \mid t}{\color{red}\bold{\Phi}}_{t+1}^\top{\color{red}\bold{\Sigma}}_{t+1 \mid t}^{-1}$</li>
+					<li>${\color{blue}\bold{X}}_{t \mid s} = {\color{blue}\bold{X}}_{t \mid t} + {\color{red}\bold{J}}_t({\color{blue}\bold{X}}_{t \mid s} - {\color{blue}\bold{X}}_{t \mid t-1})$</li>
+					<li>${\color{red}\bold{\Sigma}}_{t \mid s} =  {\color{red}\bold{\Sigma}}_{t \mid t} + {\color{red}\bold{J}}_{t}({\color{red}\bold{\Sigma}}_{t \mid s} - {\color{red}\bold{\Sigma}}_{t \mid t-1}){\color{red}\bold{J}}_{t}^\top$</li>
+					
+				</ol>
+			</div>
+			<p>
+			<b>Proof:</b> Based on the <b>tower property: </b>
+			if $\mathcal{G}_1 \subset \mathcal{G}_2$ are some $\sigma$-algebra then 
+			<center>$$\mathbb{E}(\mathbb{E}(X_t \mid \mathcal{G}_2) \mid \mathcal{G}_1) = \mathbb{E}(X_t \mid \mathcal{G}_1) $$
+			</center>
+			</p>				
+		</section>
+		<section>
+			<h1>Take home message</h1>
+			<ul>
+				<li>The Kalman algorithm can be performed online ($O(1)$ operations at each new observation)</li>
+				<li>DLM can describe ARMA processes (but does not guarantee uniqueness)</li>
+				<li>Possible adapataion to correlated errors</li>
+				<li>We can derive a likelihood estimation</li>
+			</ul>
+		</section>
+
+		<section class="cover" data-background="figures/background-blur.jpg" data-state="no-title-footer no-progressbar has-dark-background">
+			<h2 id='coverh2'>2. - Concrete example</h2>
+		</section>
+		<section>
+			<div id="target">
+			<iframe src="https:/ext:ac_ces_sd_atade_mos@perso.telecom-paristech.fr/roueff/edu/demos/dlm.html"></iframe> 
+			</div>
+		</section>
+</div>
+
+
+
+
+<div class='footer'>
+	<img src="css/theme/img/logo-ensta.svg" id="logo2" alt="Logo"/>	
+	<img src="css/theme/img/logo-Telecom.svg" id="logo1" alt="Logo"/>
+	<div id="middlebox">Kalman Filter - TSIA202b</div>
+	<ul>
+	</ul>
+</div>
+			</div>
+
+		</div>
+
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				controls: false,
+				progress: true,
+				history: true,
+				center: false,
+				slideNumber: true,
+				minScale: 0.1,
+				maxScale: 5,
+				transition: 'none', //
+
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/math-katex/math-katex.js', async: true },
+					{ src: 'plugin/reveald3/reveald3.js' },
+					{ src: 'plugin/highlight/highlight.js', async: true }
+				]
+			});
+		</script>
+
+	</body>
+
+</html>
